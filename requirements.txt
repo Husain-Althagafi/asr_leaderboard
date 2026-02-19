@@ -3,7 +3,7 @@ speechbrain
 Cython
 packaging
 huggingsound
-nemo_toolkit['all']
+nemo_toolkit[all]
 pyctcdecode
 qwen-omni-utils
 omnilingual-asr
