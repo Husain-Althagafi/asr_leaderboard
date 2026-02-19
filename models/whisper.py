@@ -43,7 +43,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
         torch_dtype=torch_dtype,
         device=device,
     )
-    with open(data_manifest, "r") as f:
+    with open(data_manifest, "r", encoding="utf-8") as f:
         with open(output_manifest, 'w') as fout:
             all_inference_time = 0
             all_audio_duration = 0
