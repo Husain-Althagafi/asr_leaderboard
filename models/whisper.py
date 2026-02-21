@@ -4,11 +4,11 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from datasets import load_dataset
-from torch.utils.data import Dataloader
+from torch.utils.data import DataLoader
+from datasets import Audio
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-
 
 def run_whisper(model_id, data_manifest, data_folder, output_manifest):
     """
@@ -48,29 +48,43 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
 
 
     ds = load_dataset(data_folder)['test']
-    loader = Dataloader(ds, batch_size=1, shuffle=False)
+    ds = ds.cast_column("audio", Audio(decode=True))
+
+    def to_array(batch):
+        batch["audio_array"] = batch["audio"]["array"]
+        batch["sr"] = batch["audio"]["sampling_rate"]
+        return batch
+
+    ds = ds.map(to_array, remove_columns=["audio"])
+    ds.set_format(type="torch", columns=["audio_array", 'text', "sr"])
     
     with open(output_manifest, 'w') as fout:
             all_inference_time = 0
             all_audio_duration = 0
             all_inference_memory = []
             count = 0
-            for item in tqdm(loader):
-                audio = item["audio"]
-                text = item['text']
-                duration = item["duration"]
+            for item in tqdm(ds):
+                # print(f'item {item}')
+                audio = item["audio_array"]   # 1D float array
+                text = item["text"]
+                # duration = float(item["duration"][0])
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
                 initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
 
                 start_time = time.time()
-                transcription = pipe(audio, generate_kwargs = {"language":"<|ar|>","task": "transcribe"})["text"]
+
+                transcription = pipe(
+                    {"array": audio, "sampling_rate": int(item["sr"].item())},
+                    generate_kwargs={"language":"<|ar|>", "task":"transcribe"}
+                )["text"]
+
                 end_time = time.time()
                 
                 inference_time = end_time - start_time
-                if count > 4:
-                    all_inference_time += inference_time
-                    all_audio_duration += duration
+                # if count > 4:
+                #     all_inference_time += inference_time
+                #     all_audio_duration += duration
                 peak_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
                 all_inference_memory.append(peak_memory-initial_memory)        
                 count += 1
@@ -82,6 +96,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
                 json.dump(metadata, fout, ensure_ascii=False)
                 fout.write('\n')
 
-    print("average rtf : ", all_inference_time/all_audio_duration)
+    # print("average rtf : ", all_inference_time/all_audio_duration)
+    print("average rtf : cant caluclate atm")
     print("model memory : ", initial_memory)
     print("average inference-only memory : ", sum(all_inference_memory)/len(all_inference_memory))

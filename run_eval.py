@@ -3,10 +3,12 @@ from eval import normalize_arabic_text, calculate_wer
 import os
 import time
 
-model_id = 'C:/Users/husain_althagafi/work/storage/whisper-large-v3'
+
+model_id = 'openai/whisper-large-v3'
 data_manifest = 'C:/Users/husain_althagafi/work/leaderboard_asr/datasets/commonvoice_test.json'
-data_folder = 'C:/Users/husain_althagafi/work/leaderboard_asr/data/common'
-output_manifest = f'outputs/test/{time.time()}.txt'
+data_folder = 'horrid-qvc/Sada22Test'
+os.makedirs(f'outputs/{data_folder}', exist_ok=True)
+output_manifest = f'outputs/{data_folder}/{time.time()}'
 
 run_whisper(
     model_id=model_id,
@@ -16,3 +18,4 @@ run_whisper(
 )
 
 results = calculate_wer(output_manifest)
+
