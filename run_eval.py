@@ -15,4 +15,4 @@ run_whisper(
     output_manifest=output_manifest
 )
 
-
+results = calculate_wer(output_manifest)

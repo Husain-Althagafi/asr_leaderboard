@@ -3,6 +3,8 @@ import time
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
+from datasets import load_dataset
+from torch.utils.data import Dataloader
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -43,22 +45,26 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
         torch_dtype=torch_dtype,
         device=device,
     )
-    with open(data_manifest, "r", encoding="utf-8") as f:
-        with open(output_manifest, 'w') as fout:
+
+
+    ds = load_dataset(data_folder)['test']
+    loader = Dataloader(ds, batch_size=1, shuffle=False)
+    
+    with open(output_manifest, 'w') as fout:
             all_inference_time = 0
             all_audio_duration = 0
             all_inference_memory = []
             count = 0
-            for line in tqdm(f):
-                item = json.loads(line)
-                in_path = item["audio_filepath"].format(data_folder=data_folder)
+            for item in tqdm(loader):
+                audio = item["audio"]
+                text = item['text']
                 duration = item["duration"]
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
                 initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
 
                 start_time = time.time()
-                transcription = pipe(in_path, generate_kwargs = {"language":"<|ar|>","task": "transcribe"})["text"]
+                transcription = pipe(audio, generate_kwargs = {"language":"<|ar|>","task": "transcribe"})["text"]
                 end_time = time.time()
                 
                 inference_time = end_time - start_time
@@ -70,8 +76,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
                 count += 1
 
                 metadata = {
-                    "audio_filepath": in_path,
-                    "text": item["text"],
+                    "text": item['text'],
                     "pred_text": transcription,
                 }
                 json.dump(metadata, fout, ensure_ascii=False)
