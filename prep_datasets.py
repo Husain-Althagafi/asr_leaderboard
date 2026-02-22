@@ -62,42 +62,42 @@ def arrow_to_wav(data_path):
 
 
 if __name__ == "__main__":
-    common = load_dataset('horrid-qvc/CommonVoice18Test')['test']
-    uae = load_dataset('horrid-qvc/CasablancaUAETest')['test']
-    morocco = load_dataset('horrid-qvc/CasablancaMoroccoTest')['test']
-    jordan = load_dataset('horrid-qvc/CasablancaJordanTest')['test']
-    algeria = load_dataset('horrid-qvc/CasablancaAlgeriaTest')['test']
-    sada = load_dataset('horrid-qvc/Sada22Test')['test']
-    yemen = load_dataset('horrid-qvc/CasablancaYemenTest')['test']
-    palestine = load_dataset('horrid-qvc/CasablancaPalestineTest')['test']  
-    mauritania = load_dataset('horrid-qvc/CasablancaMauritaniaTest')['test']
-    egypt = load_dataset('horrid-qvc/CasablancaEgyptTest')['test']
-    mgb2 = load_dataset('horrid-qvc/MGB2Test')['test']
+    # common = load_dataset('horrid-qvc/CommonVoice18Test')['test']
+    # uae = load_dataset('horrid-qvc/CasablancaUAETest')['test']
+    # morocco = load_dataset('horrid-qvc/CasablancaMoroccoTest')['test']
+    # jordan = load_dataset('horrid-qvc/CasablancaJordanTest')['test']
+    # algeria = load_dataset('horrid-qvc/CasablancaAlgeriaTest')['test']
+    # sada = load_dataset('horrid-qvc/Sada22Test')['test']
+    # yemen = load_dataset('horrid-qvc/CasablancaYemenTest')['test']
+    # palestine = load_dataset('horrid-qvc/CasablancaPalestineTest')['test']  
+    # mauritania = load_dataset('horrid-qvc/CasablancaMauritaniaTest')['test']
+    # egypt = load_dataset('horrid-qvc/CasablancaEgyptTest')['test']
+    # mgb2 = load_dataset('horrid-qvc/MGB2Test')['test']
     
-    common = standardize_dataset(common)
-    uae = standardize_dataset(uae)
-    morocco = standardize_dataset(morocco)
-    jordan = standardize_dataset(jordan)
-    algeria = standardize_dataset(algeria)
-    sada = standardize_dataset(sada)
-    yemen = standardize_dataset(yemen)
-    palestine = standardize_dataset(palestine)
-    mauritania = standardize_dataset(mauritania)
-    egypt = standardize_dataset(egypt)
-    mgb2 = standardize_dataset(mgb2)
+    # common = standardize_dataset(common)
+    # uae = standardize_dataset(uae)
+    # morocco = standardize_dataset(morocco)
+    # jordan = standardize_dataset(jordan)
+    # algeria = standardize_dataset(algeria)
+    # sada = standardize_dataset(sada)
+    # yemen = standardize_dataset(yemen)
+    # palestine = standardize_dataset(palestine)
+    # mauritania = standardize_dataset(mauritania)
+    # egypt = standardize_dataset(egypt)
+    # mgb2 = standardize_dataset(mgb2)
 
-    combined = concatenate_datasets([common, uae, morocco, jordan, algeria, sada, yemen, palestine, mauritania, egypt, mgb2])
+    # combined = concatenate_datasets([common, uae, morocco, jordan, algeria, sada, yemen, palestine, mauritania, egypt, mgb2])
     
-    save_path = 'data'
-    os.makedirs(save_path, exist_ok=True)
-    common.save_to_disk(f'{save_path}/common')
-    uae.save_to_disk(f'{save_path}/uae')
-    morocco.save_to_disk(f'{save_path}/morocco')
-    jordan.save_to_disk(f'{save_path}/jordan')  
-    algeria.save_to_disk(f'{save_path}/algeria')
-    sada.save_to_disk(f'{save_path}/sada')
-    yemen.save_to_disk(f'{save_path}/yemen')
-    palestine.save_to_disk(f'{save_path}/palestine')
-    mauritania.save_to_disk(f'{save_path}/mauritania')  
-    egypt.save_to_disk(f'{save_path}/egypt')
-    mgb2.save_to_disk(f'{save_path}/mgb2')
+    # save_path = 'data'
+    # os.makedirs(save_path, exist_ok=True)
+    # common.save_to_disk(f'{save_path}/common')
+    # uae.save_to_disk(f'{save_path}/uae')
+    # morocco.save_to_disk(f'{save_path}/morocco')
+    # jordan.save_to_disk(f'{save_path}/jordan')  
+    # algeria.save_to_disk(f'{save_path}/algeria')
+    # sada.save_to_disk(f'{save_path}/sada')
+    # yemen.save_to_disk(f'{save_path}/yemen')
+    # palestine.save_to_disk(f'{save_path}/palestine')
+    # mauritania.save_to_disk(f'{save_path}/mauritania')  
+    # egypt.save_to_disk(f'{save_path}/egypt')
+    # mgb2.save_to_disk(f'{save_path}/mgb2')
