@@ -3,7 +3,7 @@ from eval import normalize_arabic_text, calculate_wer
 import os
 import time
 
-timing = time.time()
+timing = int(time.time())
 model_id = 'openai/whisper-large-v3'
 data_manifest = 'C:/Users/husain_althagafi/work/leaderboard_asr/datasets/commonvoice_test.json'
 
@@ -27,7 +27,7 @@ results_file = f'outputs/final_results/{timing}.txt'
 
 for data_folder in data_folders:
     os.makedirs(f'outputs/{data_folder}', exist_ok=True)
-    output_manifest = f'outputs/{data_folder}/{timing}'
+    output_manifest = f'outputs/{data_folder}/{timing}.txt'
 
     run_whisper(
         model_id=model_id,
@@ -38,5 +38,5 @@ for data_folder in data_folders:
 
     results = calculate_wer(output_manifest)
 
-    with open(results_file, 'w') as f:
-        f.write(f'model: {model_id.split('/')[1]}\ndataset: {data_folder.split('/')[1]}\nwer: {results[0]}\ncer: {results[1]}')
+    with open(results_file, 'a') as f:
+        f.write(f'model: {model_id.split('/')[1]}\ndataset: {data_folder.split('/')[1]}\nwer: {results[0]}\ncer: {results[1]}\n\n')
