@@ -84,9 +84,9 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
 
     ds = load_dataset(data_folder)['test']
     ds = ds.cast_column("audio", Audio(decode=False))
-    # random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
-    # ds = ds.select(random_indices)
-    ds = ds.select(range(10))
+    random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
+    ds = ds.select(random_indices)
+    # ds = ds.select(range(10))
     with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_time = 0
             all_audio_duration = 0
