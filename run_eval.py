@@ -36,6 +36,9 @@ data_folders = [
 os.makedirs(f'outputs/final_results', exist_ok=True)
 results_file = f'outputs/final_results/{timing}.txt'
 
+wer_total = 0
+cer_total = 0
+count = 0
 
 for data_folder in data_folders:
     os.makedirs(f'outputs/{timing}', exist_ok=True)
@@ -49,6 +52,12 @@ for data_folder in data_folders:
     )
 
     results = calculate_wer(output_manifest)
+    wer_total += results[0]
+    cer_total += results[1]
+    count += 1
 
-    with open(results_file, 'a') as f:
+    with open(results_file, 'a', encoding = 'utf-8') as f:
         f.write(f'model: {'whisper-large-v3'}\ndataset: {data_folder.split("/")[1]}\nwer: {results[0]}\ncer: {results[1]}\n\n')
+
+with open(results_file, 'a', encoding='utf-8') as f:
+    f.write(f'-------------------averagewer: {wer_total/count} average cer: {cer_total/count}-------------------\n\n')

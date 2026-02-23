@@ -60,7 +60,7 @@ def calculate_wer(output_manifest):
     """
     predictions = []
     target_transcripts = []
-    with open(output_manifest, "r") as f:
+    with open(output_manifest, "r", encoding='utf-8') as f:
         for line in tqdm(f):
             item = json.loads(line)
             target_transcripts.append(normalize_arabic_text(item['text']))

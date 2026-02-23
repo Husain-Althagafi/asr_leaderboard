@@ -27,20 +27,6 @@ print("ffprobe:", which("ffprobe"))
 print("AudioSegment.converter:", AudioSegment.converter)
 print("AudioSegment.ffprobe:", AudioSegment.ffprobe)
 
-def load_mp3(path):
-    seg = AudioSegment.from_file(path)  # uses ffmpeg
-    sr = seg.frame_rate
-
-    x = np.array(seg.get_array_of_samples()).astype(np.float32)
-
-    if seg.channels == 2:
-        x = x.reshape((-1, 2)).mean(axis=1)
-
-    # Normalize if 16-bit
-    x /= 32768.0
-
-    return x, sr
-
 
 def load_audio_from_bytes(blob):
     # print(blob[:10])
@@ -58,18 +44,6 @@ def load_wav(path):
     if x.ndim == 2:
         x = x.mean(axis=1)
     return x.astype(np.float32), sr
-
-
-def to_array(sample):
-        path = sample["audio"]["path"]
-        if path.lower().endswith('.mp3'):
-            audio_array, sr = load_mp3(path)
-        else:
-            audio_array, sr = load_wav(path)
-
-        sample["audio_array"] = audio_array
-        sample["sr"] = sr
-        return sample
 
 
 def run_whisper(model_id, data_manifest, data_folder, output_manifest):
@@ -102,8 +76,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
         feature_extractor=processor.feature_extractor,
         max_new_tokens=128,
         chunk_length_s=30,
-        # batch_size=16,
-        batch_size=1,
+        batch_size=16,
         return_timestamps=False,
         torch_dtype=torch_dtype,
         device=device,
@@ -111,37 +84,20 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
 
     ds = load_dataset(data_folder)['test']
     ds = ds.cast_column("audio", Audio(decode=False))
-
-    # if ds[0][audio]['path'].lower().endswith('.mp3'):
-    #     ds = ds.cast_column("audio", Audio(decode=True))
-
-    # else:
-    #     ds = ds.cast_column("audio", Audio(decode=False))
-
-    # print(ds[0]['audio'])
-  
-    # ds = ds.map(to_array, remove_columns=["audio"])
-    # ds.set_format(type="torch", columns=["audio_array", 'text', "sr"])
-        
+    # random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
+    # ds = ds.select(random_indices)
+    ds = ds.select(range(10))
     with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_time = 0
             all_audio_duration = 0
             all_inference_memory = []
             count = 0
             for item in tqdm(ds):
-                # print(f'\nitem: {len(item)}')
                 path = item["audio"]["path"] 
                 if path.lower().endswith('.mp3'):
-                    # audio = item["audio"]["array"]   # 1D float array
-                    # sr = item["audio"]["sampling_rate"]
-                    #audio, sr = load_mp3(path)
                     audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
                 else:
                     audio, sr = load_wav(path)
-
-                # audio = item["audio_array"]   # 1D float array
-                text = item["text"]
-                # duration = float(item["duration"][0])
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
                 initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
@@ -150,7 +106,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
 
                 transcription = pipe(
                     {"array": audio, "sampling_rate": int(sr)},
-                    generate_kwargs={"language":"<|ar|>", "task":"transcribe"}
+                    generate_kwargs={"language":"<|ar|>", "task":"transcribe", 'max_length': None}
                 )["text"]
 
                 end_time = time.time()
@@ -172,6 +128,5 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
                 fout.write('\n')
 
     # print("average rtf : ", all_inference_time/all_audio_duration)
-    print("average rtf : cant caluclate atm")
     print("model memory : ", initial_memory)
     print("average inference-only memory : ", sum(all_inference_memory)/len(all_inference_memory))
