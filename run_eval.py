@@ -2,9 +2,21 @@ from models.whisper import run_whisper
 from eval import normalize_arabic_text, calculate_wer
 import os
 import time
+from pydub import AudioSegment
+
+FFMPEG = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
+FFPROBE = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffprobe.exe"
+AudioSegment.converter = FFMPEG
+AudioSegment.ffprobe = FFPROBE
+
+FFMPEG = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
+FFPROBE = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffprobe.exe"
+AudioSegment.converter = FFMPEG
+AudioSegment.ffprobe = FFPROBE
 
 timing = int(time.time())
-model_id = 'openai/whisper-large-v3'
+# model_id = 'openai/whisper-large-v3'
+model_id = 'D:/storage/whisper-large-v3'
 data_manifest = 'C:/Users/husain_althagafi/work/leaderboard_asr/datasets/commonvoice_test.json'
 
 data_folders = [
@@ -26,8 +38,8 @@ results_file = f'outputs/final_results/{timing}.txt'
 
 
 for data_folder in data_folders:
-    os.makedirs(f'outputs/{data_folder}', exist_ok=True)
-    output_manifest = f'outputs/{data_folder}/{timing}.txt'
+    os.makedirs(f'outputs/{timing}', exist_ok=True)
+    output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt'
 
     run_whisper(
         model_id=model_id,
@@ -39,4 +51,4 @@ for data_folder in data_folders:
     results = calculate_wer(output_manifest)
 
     with open(results_file, 'a') as f:
-        f.write(f'model: {model_id.split('/')[1]}\ndataset: {data_folder.split('/')[1]}\nwer: {results[0]}\ncer: {results[1]}\n\n')
+        f.write(f'model: {'whisper-large-v3'}\ndataset: {data_folder.split("/")[1]}\nwer: {results[0]}\ncer: {results[1]}\n\n')

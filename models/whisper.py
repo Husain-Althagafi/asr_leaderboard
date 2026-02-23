@@ -4,11 +4,73 @@ import torch
 from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
 from datasets import load_dataset
-from torch.utils.data import DataLoader
 from datasets import Audio
+import numpy as np
+from pydub import AudioSegment
+from pydub.utils import which
+import os
+import soundfile as sf
+import io
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+
+FFMPEG_BIN = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin"
+os.environ["PATH"] = FFMPEG_BIN + ";" + os.environ["PATH"]
+
+AudioSegment.converter = os.path.join(FFMPEG_BIN, "ffmpeg.exe")
+AudioSegment.ffprobe  = os.path.join(FFMPEG_BIN, "ffprobe.exe")
+
+# optional sanity prints
+print("ffmpeg:", which("ffmpeg"))
+print("ffprobe:", which("ffprobe"))
+print("AudioSegment.converter:", AudioSegment.converter)
+print("AudioSegment.ffprobe:", AudioSegment.ffprobe)
+
+def load_mp3(path):
+    seg = AudioSegment.from_file(path)  # uses ffmpeg
+    sr = seg.frame_rate
+
+    x = np.array(seg.get_array_of_samples()).astype(np.float32)
+
+    if seg.channels == 2:
+        x = x.reshape((-1, 2)).mean(axis=1)
+
+    # Normalize if 16-bit
+    x /= 32768.0
+
+    return x, sr
+
+
+def load_audio_from_bytes(blob):
+    # print(blob[:10])
+    seg = AudioSegment.from_file(io.BytesIO(blob), format="mp3")
+    sr = seg.frame_rate
+    x = np.array(seg.get_array_of_samples()).astype(np.float32)
+    if seg.channels == 2:
+        x = x.reshape((-1, 2)).mean(axis=1)
+    x /= 32768.0
+    return x, sr
+
+
+def load_wav(path):
+    x, sr = sf.read(path)
+    if x.ndim == 2:
+        x = x.mean(axis=1)
+    return x.astype(np.float32), sr
+
+
+def to_array(sample):
+        path = sample["audio"]["path"]
+        if path.lower().endswith('.mp3'):
+            audio_array, sr = load_mp3(path)
+        else:
+            audio_array, sr = load_wav(path)
+
+        sample["audio_array"] = audio_array
+        sample["sr"] = sr
+        return sample
+
 
 def run_whisper(model_id, data_manifest, data_folder, output_manifest):
     """
@@ -40,32 +102,44 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
         feature_extractor=processor.feature_extractor,
         max_new_tokens=128,
         chunk_length_s=30,
-        batch_size=16,
+        # batch_size=16,
+        batch_size=1,
         return_timestamps=False,
         torch_dtype=torch_dtype,
         device=device,
     )
 
-
     ds = load_dataset(data_folder)['test']
-    ds = ds.cast_column("audio", Audio(decode=True))
+    ds = ds.cast_column("audio", Audio(decode=False))
 
-    def to_array(batch):
-        batch["audio_array"] = batch["audio"]["array"]
-        batch["sr"] = batch["audio"]["sampling_rate"]
-        return batch
+    # if ds[0][audio]['path'].lower().endswith('.mp3'):
+    #     ds = ds.cast_column("audio", Audio(decode=True))
 
-    ds = ds.map(to_array, remove_columns=["audio"])
-    ds.set_format(type="torch", columns=["audio_array", 'text', "sr"])
-    
-    with open(output_manifest, 'w') as fout:
+    # else:
+    #     ds = ds.cast_column("audio", Audio(decode=False))
+
+    # print(ds[0]['audio'])
+  
+    # ds = ds.map(to_array, remove_columns=["audio"])
+    # ds.set_format(type="torch", columns=["audio_array", 'text', "sr"])
+        
+    with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_time = 0
             all_audio_duration = 0
             all_inference_memory = []
             count = 0
             for item in tqdm(ds):
-                # print(f'item {item}')
-                audio = item["audio_array"]   # 1D float array
+                # print(f'\nitem: {len(item)}')
+                path = item["audio"]["path"] 
+                if path.lower().endswith('.mp3'):
+                    # audio = item["audio"]["array"]   # 1D float array
+                    # sr = item["audio"]["sampling_rate"]
+                    #audio, sr = load_mp3(path)
+                    audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
+                else:
+                    audio, sr = load_wav(path)
+
+                # audio = item["audio_array"]   # 1D float array
                 text = item["text"]
                 # duration = float(item["duration"][0])
 
@@ -75,7 +149,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
                 start_time = time.time()
 
                 transcription = pipe(
-                    {"array": audio, "sampling_rate": int(item["sr"].item())},
+                    {"array": audio, "sampling_rate": int(sr)},
                     generate_kwargs={"language":"<|ar|>", "task":"transcribe"}
                 )["text"]
 
@@ -91,6 +165,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
 
                 metadata = {
                     "text": item['text'],
+                    'path': path,
                     "pred_text": transcription,
                 }
                 json.dump(metadata, fout, ensure_ascii=False)
