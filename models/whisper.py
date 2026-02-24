@@ -14,6 +14,7 @@ import io
 
 device = "cuda:0" if torch.cuda.is_available() else "cpu"
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+np.random.seed(42)
 
 FFMPEG_BIN = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin"
 os.environ["PATH"] = FFMPEG_BIN + ";" + os.environ["PATH"]
@@ -37,13 +38,6 @@ def load_audio_from_bytes(blob):
         x = x.reshape((-1, 2)).mean(axis=1)
     x /= 32768.0
     return x, sr
-
-
-def load_wav(path):
-    x, sr = sf.read(path)
-    if x.ndim == 2:
-        x = x.mean(axis=1)
-    return x.astype(np.float32), sr
 
 
 def run_whisper(model_id, data_manifest, data_folder, output_manifest):
@@ -86,6 +80,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
     ds = ds.cast_column("audio", Audio(decode=False))
     random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
     ds = ds.select(random_indices)
+    # print(ds[0]['audio'].keys())
     # ds = ds.select(range(10))
     with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_time = 0
@@ -94,10 +89,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
             count = 0
             for item in tqdm(ds):
                 path = item["audio"]["path"] 
-                if path.lower().endswith('.mp3'):
-                    audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
-                else:
-                    audio, sr = load_wav(path)
+                audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
                 initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)

@@ -20,7 +20,7 @@ model_id = 'D:/storage/whisper-large-v3'
 data_manifest = 'C:/Users/husain_althagafi/work/leaderboard_asr/datasets/commonvoice_test.json'
 
 data_folders = [
-    'horrid-qvc/CommonVoice18Test',
+    # 'horrid-qvc/CommonVoice18Test',
     'horrid-qvc/Sada22Test',
     'horrid-qvc/MBB2Test',
     'horrid-qvc/CasablancaUAETest',
