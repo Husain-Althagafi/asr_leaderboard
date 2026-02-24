@@ -1,3 +1,5 @@
+from transformers import AutoModelForSpeechSeq2Seq
+import torch
 from models.whisper import run_whisper
 from eval import normalize_arabic_text, calculate_wer
 import os
@@ -21,8 +23,8 @@ data_manifest = 'C:/Users/husain_althagafi/work/leaderboard_asr/datasets/commonv
 
 data_folders = [
     # 'horrid-qvc/CommonVoice18Test',
-    'horrid-qvc/Sada22Test',
-    'horrid-qvc/MBB2Test',
+    # 'horrid-qvc/Sada22Test',
+    'horrid-qvc/MGB2Test',
     'horrid-qvc/CasablancaUAETest',
     'horrid-qvc/CasablancaMoroccoTest',
     'horrid-qvc/CasablancaJordanTest',
@@ -40,7 +42,16 @@ wer_total = 0
 cer_total = 0
 count = 0
 
+torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
+model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+        )
+
 for data_folder in data_folders:
+    print(f'\n\n-------------------------------------------------------------')
+    print(f'Running evaluation for dataset: {data_folder.split("/")[1]}')
+    print(f'-------------------------------------------------------------\n\n')
+
     os.makedirs(f'outputs/{timing}', exist_ok=True)
     output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt'
 
@@ -48,7 +59,8 @@ for data_folder in data_folders:
         model_id=model_id,
         data_manifest=data_manifest,
         data_folder=data_folder,
-        output_manifest=output_manifest
+        output_manifest=output_manifest,
+        model=model
     )
 
     results = calculate_wer(output_manifest)

@@ -29,18 +29,38 @@ print("AudioSegment.converter:", AudioSegment.converter)
 print("AudioSegment.ffprobe:", AudioSegment.ffprobe)
 
 
-def load_audio_from_bytes(blob):
-    # print(blob[:10])
-    seg = AudioSegment.from_file(io.BytesIO(blob), format="mp3")
-    sr = seg.frame_rate
-    x = np.array(seg.get_array_of_samples()).astype(np.float32)
+def load_audio_from_bytes(blob: bytes):
+    # 1) Let ffmpeg sniff the container/codec (most robust)
+    try:
+        seg = AudioSegment.from_file(io.BytesIO(blob))
+    except Exception as e1:
+        # 2) If sniffing fails, try common formats explicitly
+        for fmt in ("wav", "mp3", "flac", "ogg", "m4a", "webm"):
+            try:
+                seg = AudioSegment.from_file(io.BytesIO(blob), format=fmt)
+                break
+            except Exception:
+                seg = None
+        if seg is None:
+            raise RuntimeError(f"Could not decode audio bytes. First error: {e1}")
+
+    sr = int(seg.frame_rate)
+
+    x = np.array(seg.get_array_of_samples())
+
+    # handle stereo
     if seg.channels == 2:
         x = x.reshape((-1, 2)).mean(axis=1)
-    x /= 32768.0
+
+    # normalize based on sample width (more correct than /32768 always)
+    # sample_width is bytes per sample: 2 -> int16, 4 -> int32, etc.
+    max_val = float(1 << (8 * seg.sample_width - 1))
+    x = x.astype(np.float32) / max_val
+
     return x, sr
 
 
-def run_whisper(model_id, data_manifest, data_folder, output_manifest):
+def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=None):
     """
     Arguments
     ---------
@@ -57,10 +77,14 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
     ---------
     Create an output manifest containing ground truths and predictions
     """
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(
-        model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-    )
-    model.to(device)
+    if model is None:
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+            model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+        )
+        model.to(device)
+        
+    else:
+        model.to(device)
 
     processor = AutoProcessor.from_pretrained(model_id)
     pipe = pipeline(
@@ -81,6 +105,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
     random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
     ds = ds.select(random_indices)
     # print(ds[0]['audio'].keys())
+    # print(ds[0]['audio'])
     # ds = ds.select(range(10))
     with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_time = 0
@@ -89,6 +114,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest):
             count = 0
             for item in tqdm(ds):
                 path = item["audio"]["path"] 
+                format = path.split(".")[-1] if path is not None else "wav"
                 audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
