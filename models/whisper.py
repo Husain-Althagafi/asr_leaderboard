@@ -82,7 +82,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=Non
             model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
         )
         model.to(device)
-        
+
     else:
         model.to(device)
 
@@ -104,6 +104,7 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=Non
     ds = ds.cast_column("audio", Audio(decode=False))
     random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
     ds = ds.select(random_indices)
+    len_ds = len(ds)
     # print(ds[0]['audio'].keys())
     # print(ds[0]['audio'])
     # ds = ds.select(range(10))
@@ -148,3 +149,5 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=Non
     # print("average rtf : ", all_inference_time/all_audio_duration)
     print("model memory : ", initial_memory)
     print("average inference-only memory : ", sum(all_inference_memory)/len(all_inference_memory))
+
+    return len_ds
