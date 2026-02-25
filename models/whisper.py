@@ -3,7 +3,7 @@ import time
 import torch
 from tqdm import tqdm
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
-from datasets import load_dataset
+from datasets import load_dataset, load_from_disk
 from datasets import Audio
 import numpy as np
 from pydub import AudioSegment
@@ -60,7 +60,7 @@ def load_audio_from_bytes(blob: bytes):
     return x, sr
 
 
-def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=None):
+def run_whisper(model_id, data_folder, output_manifest, model=None):
     """
     Arguments
     ---------
@@ -100,40 +100,27 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=Non
         device=device,
     )
 
-    ds = load_dataset(data_folder)['test']
+    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(data_folder)
     ds = ds.cast_column("audio", Audio(decode=False))
     random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
     ds = ds.select(random_indices)
     len_ds = len(ds)
-    # print(ds[0]['audio'].keys())
-    # print(ds[0]['audio'])
-    # ds = ds.select(range(10))
+    
     with open(output_manifest, 'w', encoding='utf-8') as fout:
-            all_inference_time = 0
-            all_audio_duration = 0
             all_inference_memory = []
             count = 0
             for item in tqdm(ds):
                 path = item["audio"]["path"] 
-                format = path.split(".")[-1] if path is not None else "wav"
                 audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
                 initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
 
-                start_time = time.time()
-
                 transcription = pipe(
                     {"array": audio, "sampling_rate": int(sr)},
                     generate_kwargs={"language":"<|ar|>", "task":"transcribe", 'max_length': None}
                 )["text"]
-
-                end_time = time.time()
-                
-                inference_time = end_time - start_time
-                # if count > 4:
-                #     all_inference_time += inference_time
-                #     all_audio_duration += duration
+                                
                 peak_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
                 all_inference_memory.append(peak_memory-initial_memory)        
                 count += 1
@@ -146,7 +133,6 @@ def run_whisper(model_id, data_manifest, data_folder, output_manifest, model=Non
                 json.dump(metadata, fout, ensure_ascii=False)
                 fout.write('\n')
 
-    # print("average rtf : ", all_inference_time/all_audio_duration)
     print("model memory : ", initial_memory)
     print("average inference-only memory : ", sum(all_inference_memory)/len(all_inference_memory))
 
