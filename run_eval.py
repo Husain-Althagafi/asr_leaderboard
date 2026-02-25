@@ -6,6 +6,8 @@ import os
 import time
 from pydub import AudioSegment
 import argparse
+from peft import PeftModel
+
 
 FFMPEG = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
 FFPROBE = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffprobe.exe"
@@ -28,13 +30,45 @@ parser.add_argument(
     help='Path or name for the ASR model to evaluate',
 )
 
+parser.add_argument(
+    '--lora_model',
+    type=str,
+    default=None,
+    help='Path to lora adapters to use for evaluation (if any)',
+)
+
+parser.add_argument(
+    '--output_manifest',
+    type=str,
+    default=None,
+    help='Path to output manifest file',
+)
+
 args = parser.parse_args()
+
+torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
 model_id = args.model
 # model_id = 'D:/storage/whisper-large-v3'
 
+if args.lora_model is not None:
+    print("loading base model for lora...")
+    base_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, use_safetensors=True
+    )
+    print("loading lora model...")
+    model = PeftModel.from_pretrained(
+        base_model,
+        args.lora_model,
+    )  
+
+else:
+    model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+            )
+
 data_folders = [
-    'horrid-qvc/CommonVoice18Test',
+    # 'horrid-qvc/CommonVoice18Test',
     'horrid-qvc/Sada22Test',
     'horrid-qvc/MGB2Test',
     'data/horrid-qvc/CasablancaAllTest',
@@ -55,20 +89,17 @@ wer_total = 0
 cer_total = 0
 count = 0
 
-torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
-model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-        )
-
 total_len_ds = 0
+
+error_rates = []
 
 for data_folder in data_folders:
     print(f'\n\n-------------------------------------------------------------')
     print(f'Running evaluation for dataset: {data_folder.split("/")[1]}')
     print(f'-------------------------------------------------------------\n\n')
 
-    os.makedirs(f'outputs/{timing}', exist_ok=True)
-    output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt'
+    os.makedirs(f'outputs/{timing}', exist_ok=True) if args.output_manifest is None else os.makedirs(args.output_manifest, exist_ok=True)
+    output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt' if args.output_manifest is None else args.output_manifest+f'/{data_folder.split("/")[1]}.txt'
     # output_manifest = f'outputs/run_outputs/{data_folder.split("/")[1]}.txt'
 
     len_ds = run_whisper(
@@ -85,9 +116,15 @@ for data_folder in data_folders:
     cer_total += results[1]
     count += 1
 
+    error_rates.append((data_folder.split("/")[1], results[0], results[1], len_ds))
+
     with open(results_file, 'a', encoding = 'utf-8') as f:
         f.write(f'model: whisper-large-v3\ndataset: {data_folder.split("/")[1]}\nwer: {results[0]}\ncer: {results[1]}\nlen_ds: {len_ds}\n\n')
         # f.write(f'model: whisper-large-v3\ndataset: {data_folder.split("/")[1]}\nwer: {results[0]}\ncer: {results[1]}\n\n')
 
+for err in error_rates:
+    wer_total += err[1] * err[3] if err[3] > 0 else 0
+    cer_total += err[2] * err[3] if err[3] > 0 else 0
+
 with open(results_file, 'a', encoding='utf-8') as f:
-    f.write(f'-------------------average wer: {wer_total/count} average cer: {cer_total/count}-------------------\n\n')
+    f.write(f'-------------------average wer: {wer_total/total_len_ds if total_len_ds > 0 else 0} average cer: {cer_total/total_len_ds if total_len_ds > 0 else 0}-------------------\n\n')
