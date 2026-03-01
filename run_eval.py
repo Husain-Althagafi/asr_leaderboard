@@ -1,12 +1,14 @@
 from transformers import AutoModelForSpeechSeq2Seq
 import torch
 from models.whisper import run_whisper
+from models.faster_whisper import run_faster_whisper
 from eval import calculate_wer
 import os
 import time
 from pydub import AudioSegment
 import argparse
 from peft import PeftModel
+from faster_whisper import WhisperModel
 
 
 FFMPEG = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
@@ -49,6 +51,11 @@ parser.add_argument(
     action='store_true',
 )
 
+parser.add_argument(
+    '--faster_whisper',
+    action='store_true',
+)
+
 args = parser.parse_args()
 
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -60,17 +67,18 @@ if args.lora_model is not None and args.run_inference:
     print("loading base model for lora...")
     base_model = AutoModelForSpeechSeq2Seq.from_pretrained(
         model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, use_safetensors=True
-    )
+    ) if args.faster_whisper == False else WhisperModel(model_id, device="cuda", compute_type="float16")
     print("loading lora model...")
     model = PeftModel.from_pretrained(
         base_model,
         args.lora_model,
     )  
 
-else:
-    model = AutoModelForSpeechSeq2Seq.from_pretrained(
-                model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-            )
+elif args.run_inference:
+        model = AutoModelForSpeechSeq2Seq.from_pretrained(
+                    model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+                ) if args.faster_whisper == False else WhisperModel(model_id, device="cuda", compute_type="float16")
+        model.to("cuda" if torch.cuda.is_available() else "cpu")
 
 data_folders = [
     'horrid-qvc/CommonVoice18Test',
@@ -88,7 +96,7 @@ data_folders = [
 ]
 
 os.makedirs(f'outputs/final_results', exist_ok=True)
-results_file = f'outputs/final_results/{timing}.txt'
+results_file = f'outputs/final_results/{timing}.txt' if args.output_manifest is None else f'outputs/final_results/{args.output_manifest}.txt'
 
 wer_total = 0
 cer_total = 0
@@ -104,18 +112,21 @@ for data_folder in data_folders:
     print(f'-------------------------------------------------------------\n\n')
 
     os.makedirs(f'outputs/{timing}', exist_ok=True) if args.output_manifest is None else os.makedirs(args.output_manifest, exist_ok=True)
-    output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt' if args.output_manifest is None else args.output_manifest+f'/{data_folder.split("/")[1]}.txt'
+    output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt' if args.output_manifest is None else f'outputs/'+args.output_manifest+f'/{data_folder.split("/")[1]}.txt'
     # output_manifest = f'outputs/run_outputs/{data_folder.split("/")[1]}.txt'
 
-    if args.run_inference   :
+    if args.run_inference:
         run_whisper(
             model_id=model_id,
             data_folder=data_folder,
             output_manifest=output_manifest,
             model=model
+        ) if args.faster_whisper == False else run_faster_whisper(
+            model_id=model_id,
+            data_folder=data_folder,
+            output_manifest=output_manifest,
+            model=model
         )
-
-        # total_len_ds += len_ds
 
     results = calculate_wer(output_manifest)
     wer_total += results[0]

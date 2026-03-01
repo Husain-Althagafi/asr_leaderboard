@@ -61,6 +61,7 @@ kaldi-python-io==1.2.2
 kaldialign==0.9.1
 kiwisolver==1.4.9
 lazy-loader==0.4
+levenshtein==0.27.3
 lhotse==1.31.1
 libcst==1.8.6
 librosa==0.11.0
@@ -120,6 +121,7 @@ pygments==2.19.2
 pyloudnorm==0.2.0
 pyparsing==3.3.2
 python-dateutil==2.9.0.post0
+python-levenshtein==0.27.3
 pytorch-lightning==2.6.1
 pyyaml==6.0.3
 rapidfuzz==3.14.3
@@ -156,7 +158,6 @@ toml==0.10.2
 toolz==1.1.0
 torch==2.5.1+cu121
 torchaudio==2.5.1+cu121
-torchcodec==0.10.0
 torchmetrics==1.8.2
 torchvision==0.20.1+cu121
 tqdm==4.67.3
