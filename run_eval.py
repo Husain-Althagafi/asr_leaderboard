@@ -44,6 +44,11 @@ parser.add_argument(
     help='Path to output manifest file',
 )
 
+parser.add_argument(
+    '--run_inference',
+    action='store_true',
+)
+
 args = parser.parse_args()
 
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -51,7 +56,7 @@ torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 model_id = args.model
 # model_id = 'D:/storage/whisper-large-v3'
 
-if args.lora_model is not None:
+if args.lora_model is not None and args.run_inference:
     print("loading base model for lora...")
     base_model = AutoModelForSpeechSeq2Seq.from_pretrained(
         model_id, torch_dtype=torch.float16, low_cpu_mem_usage=True, use_safetensors=True
@@ -68,7 +73,7 @@ else:
             )
 
 data_folders = [
-    # 'horrid-qvc/CommonVoice18Test',
+    'horrid-qvc/CommonVoice18Test',
     'horrid-qvc/Sada22Test',
     'horrid-qvc/MGB2Test',
     'data/horrid-qvc/CasablancaAllTest',
@@ -102,25 +107,27 @@ for data_folder in data_folders:
     output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt' if args.output_manifest is None else args.output_manifest+f'/{data_folder.split("/")[1]}.txt'
     # output_manifest = f'outputs/run_outputs/{data_folder.split("/")[1]}.txt'
 
-    len_ds = run_whisper(
-        model_id=model_id,
-        data_folder=data_folder,
-        output_manifest=output_manifest,
-        model=model
-    )
+    if args.run_inference   :
+        run_whisper(
+            model_id=model_id,
+            data_folder=data_folder,
+            output_manifest=output_manifest,
+            model=model
+        )
 
-    total_len_ds += len_ds
+        # total_len_ds += len_ds
 
     results = calculate_wer(output_manifest)
     wer_total += results[0]
     cer_total += results[1]
+    len_ds = results[2]
     count += 1
+    total_len_ds += len_ds
 
     error_rates.append((data_folder.split("/")[1], results[0], results[1], len_ds))
 
     with open(results_file, 'a', encoding = 'utf-8') as f:
         f.write(f'model: whisper-large-v3\ndataset: {data_folder.split("/")[1]}\nwer: {results[0]}\ncer: {results[1]}\nlen_ds: {len_ds}\n\n')
-        # f.write(f'model: whisper-large-v3\ndataset: {data_folder.split("/")[1]}\nwer: {results[0]}\ncer: {results[1]}\n\n')
 
 for err in error_rates:
     wer_total += err[1] * err[3] if err[3] > 0 else 0

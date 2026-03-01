@@ -65,8 +65,10 @@ def calculate_wer(output_manifest):
             item = json.loads(line)
             target_transcripts.append(normalize_arabic_text(item['text']))
             predictions.append(normalize_arabic_text(item['pred_text']))
+
+    len_ds = [len(predictions)] * len(predictions)
     wer = word_error_rate(predictions, target_transcripts)
     print("wer : ", wer)
     cer = word_error_rate(predictions, target_transcripts, use_cer=True)
     print("cer : ", cer)
-    return wer, cer
+    return wer, cer, len_ds[0]
