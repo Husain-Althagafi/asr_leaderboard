@@ -79,7 +79,7 @@ def run_faster_whisper(model_id, data_folder, output_manifest, model):
     """
 
     
-    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(data_folder)
+    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'd:/storage/{data_folder}')
     ds = ds.cast_column("audio", Audio(decode=False))
     random_indices = np.random.choice(len(ds), size=100, replace=False)
     ds = ds.select(random_indices)
