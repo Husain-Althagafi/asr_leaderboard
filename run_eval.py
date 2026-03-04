@@ -78,13 +78,12 @@ elif args.run_inference:
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
                     model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
                 ) if args.faster_whisper == False else WhisperModel(model_id, device="cuda", compute_type="float16")
-        model.to("cuda" if torch.cuda.is_available() else "cpu")
 
 data_folders = [
     'horrid-qvc/CommonVoice18Test',
     'horrid-qvc/Sada22Test',
     'horrid-qvc/MGB2Test',
-    'data/horrid-qvc/CasablancaAllTest',
+    'horrid-qvc/CasablancaAllTest',
     # 'horrid-qvc/CasablancaUAETest',
     # 'horrid-qvc/CasablancaMoroccoTest',
     # 'horrid-qvc/CasablancaJordanTest',
@@ -111,7 +110,7 @@ for data_folder in data_folders:
     print(f'Running evaluation for dataset: {data_folder.split("/")[1]}')
     print(f'-------------------------------------------------------------\n\n')
 
-    os.makedirs(f'outputs/{timing}', exist_ok=True) if args.output_manifest is None else os.makedirs(args.output_manifest, exist_ok=True)
+    os.makedirs(f'outputs/{timing}', exist_ok=True) if args.output_manifest is None else os.makedirs(f'outputs/'+args.output_manifest, exist_ok=True)
     output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt' if args.output_manifest is None else f'outputs/'+args.output_manifest+f'/{data_folder.split("/")[1]}.txt'
     # output_manifest = f'outputs/run_outputs/{data_folder.split("/")[1]}.txt'
 

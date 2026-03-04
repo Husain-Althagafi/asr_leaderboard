@@ -79,7 +79,7 @@ def run_whisper(model_id, data_folder, output_manifest, model=None):
     """
     if model is None:
         model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, torch_dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
+            model_id, dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
         )
         model.to(device)
 
@@ -96,15 +96,16 @@ def run_whisper(model_id, data_folder, output_manifest, model=None):
         chunk_length_s=30,
         batch_size=16,
         return_timestamps=False,
-        torch_dtype=torch_dtype,
+        dtype=torch_dtype,
         device=device,
     )
 
-    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(data_folder)
+    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'd:/storage/{data_folder}')
     ds = ds.cast_column("audio", Audio(decode=False))
-    random_indices = np.random.choice(len(ds), size=int(len(ds) * 0.1), replace=False)
+    random_indices = np.random.choice(len(ds), size=100, replace=False)
     ds = ds.select(random_indices)
     len_ds = len(ds)
+    print(f'Loaded {len_ds} samples from the dataset.') 
     
     with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_memory = []

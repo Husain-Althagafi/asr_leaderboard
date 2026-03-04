@@ -59,3 +59,12 @@ We welcome models that:
   year={2024}
 }
 ```
+
+
+
+
+# Mine
+
+run my model: python run_eval.py --lora_model d:/storage/my_model --output_manifest my_lora_v2_100samples --run_inference
+
+run davids model: python run_eval.py --model d:/storage/davids --output_manifest ###whatever u want --run_inference --faster_whisper
