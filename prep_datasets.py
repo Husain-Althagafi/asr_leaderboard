@@ -1,5 +1,5 @@
 from datasets import Dataset, concatenate_datasets, load_dataset, load_from_disk, Audio
-import soundfile as sf
+# import soundfile as sf
 import os
 import json
 
@@ -101,3 +101,8 @@ if __name__ == "__main__":
     # mauritania.save_to_disk(f'{save_path}/mauritania')  
     # egypt.save_to_disk(f'{save_path}/egypt')
     # mgb2.save_to_disk(f'{save_path}/mgb2')
+
+
+    ds = load_dataset('KFUPM-JRCAI/ArabicVoicesClean_v4')
+
+    ds.save_to_disk('D:/DATA/ArabicVoicesClean_v4')
