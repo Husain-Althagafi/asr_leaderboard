@@ -3,6 +3,7 @@ import json
 from nemo.collections.asr.metrics.wer import word_error_rate
 from tqdm import tqdm
 import re
+from jiwer import wer, cer
 
 def normalize_arabic_text(text):
     """
@@ -72,3 +73,4 @@ def calculate_wer(output_manifest):
     cer = word_error_rate(predictions, target_transcripts, use_cer=True)
     print("cer : ", cer)
     return wer, cer, len_ds[0]
+

@@ -56,6 +56,11 @@ parser.add_argument(
     action='store_true',
 )
 
+parser.add_argument(
+     '--sample_proportion',
+     action='store_true',
+)
+
 args = parser.parse_args()
 
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
@@ -119,12 +124,14 @@ for data_folder in data_folders:
             model_id=model_id,
             data_folder=data_folder,
             output_manifest=output_manifest,
-            model=model
+            model=model,
+            proportion=args.sample_proportion
         ) if args.faster_whisper == False else run_faster_whisper(
             model_id=model_id,
             data_folder=data_folder,
             output_manifest=output_manifest,
-            model=model
+            model=model,
+            proportion=args.sample_proportion
         )
 
     results = calculate_wer(output_manifest)

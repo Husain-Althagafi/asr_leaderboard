@@ -60,7 +60,7 @@ def load_audio_from_bytes(blob: bytes):
     return x, sr
 
 
-def run_whisper(model_id, data_folder, output_manifest, model=None):
+def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=True):
     """
     Arguments
     ---------
@@ -86,6 +86,8 @@ def run_whisper(model_id, data_folder, output_manifest, model=None):
     else:
         model.to(device)
 
+    model.eval()
+
     processor = AutoProcessor.from_pretrained(model_id)
     pipe = pipeline(
         "automatic-speech-recognition",
@@ -102,8 +104,18 @@ def run_whisper(model_id, data_folder, output_manifest, model=None):
 
     ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'd:/storage/{data_folder}')
     ds = ds.cast_column("audio", Audio(decode=False))
-    random_indices = np.random.choice(len(ds), size=100, replace=False)
-    ds = ds.select(random_indices)
+
+    print(f'proportion sampling: {proportion}')
+
+    if proportion:
+        sample_size = int(0.1 * len(ds))  # 10% of the dataset
+        random_indices = np.random.choice(len(ds), size=sample_size, replace=False)
+        ds = ds.select(random_indices)
+    
+    else:
+        random_indices = np.random.choice(len(ds), size=100, replace=False)
+        ds = ds.select(random_indices)
+
     len_ds = len(ds)
     print(f'Loaded {len_ds} samples from the dataset.') 
     
@@ -119,7 +131,7 @@ def run_whisper(model_id, data_folder, output_manifest, model=None):
 
                 transcription = pipe(
                     {"array": audio, "sampling_rate": int(sr)},
-                    generate_kwargs={"language":"<|ar|>", "task":"transcribe", 'max_length': None}
+                    generate_kwargs={"language":"<|ar|>", "task":"transcribe", 'max_length': None, }
                 )["text"]
                                 
                 peak_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
