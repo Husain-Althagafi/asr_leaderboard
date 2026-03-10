@@ -85,9 +85,9 @@ elif args.run_inference:
                 ) if args.faster_whisper == False else WhisperModel(model_id, device="cuda", compute_type="float16")
 
 data_folders = [
-    'horrid-qvc/CommonVoice18Test',
-    'horrid-qvc/Sada22Test',
-    'horrid-qvc/MGB2Test',
+    # 'horrid-qvc/CommonVoice18Test',
+    # 'horrid-qvc/Sada22Test',
+    # 'horrid-qvc/MGB2Test',
     'horrid-qvc/CasablancaAllTest',
     # 'horrid-qvc/CasablancaUAETest',
     # 'horrid-qvc/CasablancaMoroccoTest',

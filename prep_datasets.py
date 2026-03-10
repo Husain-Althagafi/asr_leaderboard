@@ -105,4 +105,6 @@ if __name__ == "__main__":
 
     ds = load_dataset('KFUPM-JRCAI/ArabicVoicesClean_v4')
 
-    ds.save_to_disk('home/husain/data/ArabicVoicesClean_v4')
+    # ds.save_to_disk('home/husain/data/ArabicVoicesClean_v4')
+    ds.save_to_disk('data/ArabicVoicesClean_v4')
+

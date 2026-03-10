@@ -83,7 +83,7 @@ def main():
             response = client.models.generate_content(
                 model='gemini-3-flash-preview',
                 contents=[
-                    'Transcribe this audio exactly. It is in arabic. Return ONLY the transcription. Dont separate different speakers keep the trasncription continuous.',
+                    'Transcribe this audio exactly. It is in arabic. Return ONLY the transcription. Dont separate different speakers keep the transcription continuous.',
                     types.Part.from_bytes(data=sample_bytes, mime_type='audio/wav')
                 ]
             )

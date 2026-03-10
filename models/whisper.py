@@ -102,7 +102,7 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
         device=device,
     )
 
-    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'd:/storage/{data_folder}')
+    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'C:/Users/husain_althagafi/work/leaderboard_asr/data/{data_folder}')
     ds = ds.cast_column("audio", Audio(decode=False))
 
     print(f'proportion sampling: {proportion}')
