@@ -88,7 +88,7 @@ data_folders = [
     # 'horrid-qvc/CommonVoice18Test',
     # 'horrid-qvc/Sada22Test',
     # 'horrid-qvc/MGB2Test',
-    'horrid-qvc/CasablancaAllTest',
+    # 'horrid-qvc/CasablancaAllTest',
     # 'horrid-qvc/CasablancaUAETest',
     # 'horrid-qvc/CasablancaMoroccoTest',
     # 'horrid-qvc/CasablancaJordanTest',
@@ -97,6 +97,7 @@ data_folders = [
     # 'horrid-qvc/CasablancaPalestineTest',
     # 'horrid-qvc/CasablancaMauritaniaTest',
     # 'horrid-qvc/CasablancaEgyptTest',
+    'storage/ArabicVoicesClean_v4',
 ]
 
 os.makedirs(f'outputs/final_results', exist_ok=True)

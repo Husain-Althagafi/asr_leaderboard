@@ -102,7 +102,15 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
         device=device,
     )
 
-    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'C:/Users/husain_althagafi/work/leaderboard_asr/data/{data_folder}')
+    if 'CasablancaAllTest' in data_folder:
+        ds = load_from_disk(f'C:/Users/husain_althagafi/work/leaderboard_asr/data/{data_folder}')
+
+    elif 'ArabicVoicesClean_v4' in data_folder:
+        ds = load_from_disk(f'D:/{data_folder}')['train']
+    
+    else:
+        ds = load_dataset(data_folder)['test']
+
     ds = ds.cast_column("audio", Audio(decode=False))
 
     print(f'proportion sampling: {proportion}')
@@ -113,8 +121,7 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
         ds = ds.select(random_indices)
     
     else:
-        random_indices = np.random.choice(len(ds), size=100, replace=False)
-        ds = ds.select(random_indices)
+        ds = ds.select(range(10))
 
     len_ds = len(ds)
     print(f'Loaded {len_ds} samples from the dataset.') 

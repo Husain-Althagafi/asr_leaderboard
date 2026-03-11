@@ -4,6 +4,13 @@ from nemo.collections.asr.metrics.wer import word_error_rate
 from tqdm import tqdm
 import re
 from jiwer import wer, cer
+import unicodedata
+
+def remove_punctuation(text):
+    return ''.join(
+        ch for ch in text
+        if unicodedata.category(ch)[0] != 'P'
+    )
 
 def normalize_arabic_text(text):
     """
@@ -21,7 +28,7 @@ def normalize_arabic_text(text):
     normalized text
     """
     # Remove punctuation
-    punctuation = r'[!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~،؛؟]'
+    punctuation = r'[!"#$%&\'()*.+,-./:;<=>?@[\\]^_`{|}~،؛؟]'
     text = re.sub(punctuation, '', text)
 
     # Remove diacritics
@@ -36,6 +43,8 @@ def normalize_arabic_text(text):
     text = re.sub(r'[ؤ]', 'و', text)
     text = re.sub(r'[ئ]', 'ي', text)
     text = re.sub(r'[ء]', '', text)   
+
+    text = remove_punctuation(text)
 
     # Transliterate Eastern Arabic numerals to Western Arabic numerals
     eastern_to_western_numerals = {
