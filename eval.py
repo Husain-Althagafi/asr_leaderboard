@@ -78,8 +78,12 @@ def calculate_wer(output_manifest):
 
     len_ds = [len(predictions)] * len(predictions)
     wer = word_error_rate(predictions, target_transcripts)
+    # wer = jiwer.wer(predictions, target_transcripts)
+
     print("wer : ", wer)
     cer = word_error_rate(predictions, target_transcripts, use_cer=True)
+    # cer = jiwer.cer(predictions, target_transcripts,)
+
     print("cer : ", cer)
     return wer, cer, len_ds[0]
 
