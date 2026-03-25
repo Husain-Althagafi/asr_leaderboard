@@ -120,8 +120,8 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
         random_indices = np.random.choice(len(ds), size=sample_size, replace=False)
         ds = ds.select(random_indices)
     
-    else:
-        ds = ds.select(range(10))
+    #else:
+        # ds = ds.select(range(10))
 
     len_ds = len(ds)
     print(f'Loaded {len_ds} samples from the dataset.') 
