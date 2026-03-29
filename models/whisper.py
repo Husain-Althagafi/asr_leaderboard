@@ -60,7 +60,7 @@ def load_audio_from_bytes(blob: bytes):
     return x, sr
 
 
-def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=True):
+def run_whisper(model_id, data_folder, output_manifest, model=None, full=False, random=False, proportional=False):
     """
     Arguments
     ---------
@@ -113,15 +113,17 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
 
     ds = ds.cast_column("audio", Audio(decode=False))
 
-    print(f'proportion sampling: {proportion}')
+    print(f'full sampling: {full}')
 
-    if proportion:
-        sample_size = int(0.1 * len(ds))  # 10% of the dataset
-        random_indices = np.random.choice(len(ds), size=sample_size, replace=False)
-        ds = ds.select(random_indices)
+    if not full:
+        sample_size = int(0.1 * len(ds)) if proportional else 100
+        selected_indices = np.random.choice(len(ds), size=sample_size, replace=False) if random else list(range(sample_size))
+        ds = ds.select(selected_indices)
+        original_indices = selected_indices
+    else:
+        ds = ds.select(range(100))
+
     
-    #else:
-        # ds = ds.select(range(10))
 
     len_ds = len(ds)
     print(f'Loaded {len_ds} samples from the dataset.') 
@@ -129,7 +131,8 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
     with open(output_manifest, 'w', encoding='utf-8') as fout:
             all_inference_memory = []
             count = 0
-            for item in tqdm(ds):
+            for idx, item in enumerate(tqdm(ds)):
+                original_idx = int(original_indices[idx])
                 path = item["audio"]["path"] 
                 audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
 
@@ -146,6 +149,7 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, proportion=T
                 count += 1
 
                 metadata = {
+                    "index": original_idx,
                     "text": item['text'],
                     'path': path,
                     "pred_text": transcription,

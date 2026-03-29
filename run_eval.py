@@ -28,7 +28,7 @@ parser = argparse.ArgumentParser(description='Evaluate ASR models on multiple da
 parser.add_argument(
     '--model',
     type=str,
-    default='D:/storage/whisper-large-v3',
+    default='D:/storage/models/whisper-large-v3',
     help='Path or name for the ASR model to evaluate',
 )
 
@@ -61,12 +61,22 @@ parser.add_argument(
      action='store_true',
 )
 
+parser.add_argument(
+    '--full_eval',
+    action='store_true',
+)
+
+parser.add_argument(
+    '--random_sample',
+    action='store_true',
+)
+
+
 args = parser.parse_args()
 
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 
 model_id = args.model
-# model_id = 'D:/storage/whisper-large-v3'
 
 if args.lora_model is not None and args.run_inference:
     print("loading base model for lora...")
@@ -85,10 +95,9 @@ elif args.run_inference:
                 ) if args.faster_whisper == False else WhisperModel(model_id, device="cuda", compute_type="float16")
 
 data_folders = [
-    # 'horrid-qvc/CommonVoice18Test',
+    'horrid-qvc/CommonVoice18Test',
     # 'horrid-qvc/Sada22Test',
     # 'horrid-qvc/MGB2Test',
-    # 'horrid-qvc/CasablancaAllTest',
     # 'horrid-qvc/CasablancaUAETest',
     # 'horrid-qvc/CasablancaMoroccoTest',
     # 'horrid-qvc/CasablancaJordanTest',
@@ -97,7 +106,9 @@ data_folders = [
     # 'horrid-qvc/CasablancaPalestineTest',
     # 'horrid-qvc/CasablancaMauritaniaTest',
     # 'horrid-qvc/CasablancaEgyptTest',
-    'storage/ArabicVoicesClean_v4',
+    # 'storage/ArabicVoicesClean_v4',
+    # 'horrid-qvc/CasablancaAllTest',
+
 ]
 
 os.makedirs(f'outputs/final_results', exist_ok=True)
@@ -126,13 +137,17 @@ for data_folder in data_folders:
             data_folder=data_folder,
             output_manifest=output_manifest,
             model=model,
-            proportion=args.sample_proportion
+            full=args.full_eval,
+            random_sample=args.random_sample,
+            proportional=args.sample_proportion,
         ) if args.faster_whisper == False else run_faster_whisper(
             model_id=model_id,
             data_folder=data_folder,
             output_manifest=output_manifest,
             model=model,
-            proportion=args.sample_proportion
+            full=args.full_eval,
+            random_sample=args.random_sample,
+            proportional=args.sample_proportion,
         )
 
     results = calculate_wer(output_manifest)
