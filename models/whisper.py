@@ -121,7 +121,7 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, full=False, 
         ds = ds.select(selected_indices)
         original_indices = selected_indices
     else:
-        ds = ds.select(range(100))
+        original_indices = list(range(len(ds)))        
 
     
 

@@ -96,16 +96,16 @@ elif args.run_inference:
 
 data_folders = [
     'horrid-qvc/CommonVoice18Test',
-    # 'horrid-qvc/Sada22Test',
-    # 'horrid-qvc/MGB2Test',
-    # 'horrid-qvc/CasablancaUAETest',
-    # 'horrid-qvc/CasablancaMoroccoTest',
-    # 'horrid-qvc/CasablancaJordanTest',
-    # 'horrid-qvc/CasablancaAlgeriaTest',
-    # 'horrid-qvc/CasablancaYemenTest',
-    # 'horrid-qvc/CasablancaPalestineTest',
-    # 'horrid-qvc/CasablancaMauritaniaTest',
-    # 'horrid-qvc/CasablancaEgyptTest',
+    'horrid-qvc/Sada22Test',
+    'horrid-qvc/MGB2Test',
+    'horrid-qvc/CasablancaUAETest',
+    'horrid-qvc/CasablancaMoroccoTest',
+    'horrid-qvc/CasablancaJordanTest',
+    'horrid-qvc/CasablancaAlgeriaTest',
+    'horrid-qvc/CasablancaYemenTest',
+    'horrid-qvc/CasablancaPalestineTest',
+    'horrid-qvc/CasablancaMauritaniaTest',
+    'horrid-qvc/CasablancaEgyptTest',
     # 'storage/ArabicVoicesClean_v4',
     # 'horrid-qvc/CasablancaAllTest',
 
@@ -129,7 +129,6 @@ for data_folder in data_folders:
 
     os.makedirs(f'outputs/{timing}', exist_ok=True) if args.output_manifest is None else os.makedirs(f'outputs/'+args.output_manifest, exist_ok=True)
     output_manifest = f'outputs/{timing}/{data_folder.split("/")[1]}.txt' if args.output_manifest is None else f'outputs/'+args.output_manifest+f'/{data_folder.split("/")[1]}.txt'
-    # output_manifest = f'outputs/run_outputs/{data_folder.split("/")[1]}.txt'
 
     if args.run_inference:
         run_whisper(
@@ -138,7 +137,7 @@ for data_folder in data_folders:
             output_manifest=output_manifest,
             model=model,
             full=args.full_eval,
-            random_sample=args.random_sample,
+            random=args.random_sample,
             proportional=args.sample_proportion,
         ) if args.faster_whisper == False else run_faster_whisper(
             model_id=model_id,

@@ -60,57 +60,108 @@ def load_audio_from_bytes(blob: bytes):
     return x, sr
 
 
-def run_faster_whisper(model_id, data_folder, output_manifest, model):
+def run_faster_whisper(
+    model_id,
+    data_folder,
+    output_manifest,
+    model,
+    full=False,
+    random_sample=False,
+    proportional=False,
+):
     """
     Arguments
     ---------
     model_id: str
-        HuggingFace whisper model name
-    data_manifest: str
-        Path of a data manifest under datasets/
+        Kept for interface consistency; not used if `model` is already loaded.
     data_folder: str
-        The path to the test set
+        The dataset name or local dataset folder.
     output_manifest: str
-        The output manifest path
+        The output manifest path.
+    model:
+        A Faster-Whisper model instance.
+    full: bool
+        If True, run on full dataset.
+    random: bool
+        If True, sample randomly.
+    proportional: bool
+        If True and full=False, sample 10% of dataset instead of 100.
 
     Output
-    ---------
-    Create an output manifest containing ground truths and predictions
+    ------
+    Creates an output manifest containing ground truths and predictions.
     """
 
-    
-    ds = load_dataset(data_folder)['test'] if 'CasablancaAllTest' not in data_folder else load_from_disk(f'd:/storage/{data_folder}')
+    if 'CasablancaAllTest' in data_folder:
+        ds = load_from_disk(f'C:/Users/husain_althagafi/work/leaderboard_asr/data/{data_folder}')
+    elif 'ArabicVoicesClean_v4' in data_folder:
+        ds = load_from_disk(f'D:/{data_folder}')['train']
+    else:
+        ds = load_dataset(data_folder)['test']
+
     ds = ds.cast_column("audio", Audio(decode=False))
-    random_indices = np.random.choice(len(ds), size=100, replace=False)
-    ds = ds.select(random_indices)
+
+    print(f'full sampling: {full}')
+
+    if not full:
+        sample_size = int(0.1 * len(ds)) if proportional else 100
+        sample_size = min(sample_size, len(ds))
+
+        selected_indices = (
+            np.random.choice(len(ds), size=sample_size, replace=False)
+            if random_sample else list(range(sample_size))
+        )
+        ds = ds.select(selected_indices)
+        original_indices = list(selected_indices)
+    else:
+        original_indices = list(range(len(ds)))
+
     len_ds = len(ds)
     print(f'Loaded {len_ds} samples from the dataset.')
-    
+
+    all_inference_memory = []
+
     with open(output_manifest, 'w', encoding='utf-8') as fout:
-            all_inference_memory = []
-            count = 0
-            for item in tqdm(ds):
-                path = item["audio"]["path"] 
-                audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
+        for idx, item in enumerate(tqdm(ds)):
+            original_idx = int(original_indices[idx])
+            path = item["audio"]["path"]
+            audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
 
+            if torch.cuda.is_available():
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
-                initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
+                initial_memory = (
+                    torch.cuda.max_memory_allocated(torch.device("cuda")) / (1024 ** 3)
+                )
+            else:
+                initial_memory = 0.0
 
-                segments, info = model.transcribe(audio, language="ar", beam_size=5)
-                                
-                peak_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
-                all_inference_memory.append(peak_memory-initial_memory)        
-                count += 1
+            segments, info = model.transcribe(
+                audio,
+                language="ar",
+                beam_size=5,
+            )
 
-                metadata = {
-                    "text": item['text'],
-                    'path': path,
-                    "pred_text": " ".join(seg.text.strip() for seg in segments)
-                }
-                json.dump(metadata, fout, ensure_ascii=False)
-                fout.write('\n')
+            transcription = " ".join(seg.text.strip() for seg in segments).strip()
 
-    print("model memory : ", initial_memory)
-    print("average inference-only memory : ", sum(all_inference_memory)/len(all_inference_memory))
+            if torch.cuda.is_available():
+                peak_memory = (
+                    torch.cuda.max_memory_allocated(torch.device("cuda")) / (1024 ** 3)
+                )
+                all_inference_memory.append(peak_memory - initial_memory)
+
+            metadata = {
+                "index": original_idx,
+                "text": item["text"],
+                "path": path,
+                "pred_text": transcription,
+            }
+            json.dump(metadata, fout, ensure_ascii=False)
+            fout.write('\n')
+
+    print("model memory :", initial_memory)
+    if all_inference_memory:
+        print("average inference-only memory :", sum(all_inference_memory) / len(all_inference_memory))
+    else:
+        print("average inference-only memory : 0.0")
 
     return len_ds
