@@ -1,6 +1,5 @@
 import argparse
 from peft import PeftModel
-from safetensors import torch
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
 import librosa
 import torch
@@ -32,9 +31,15 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Whisper Lora Wrapper")
     parser.add_argument("--model_path", type=str, required=True, help="Path to the base Whisper model")
     parser.add_argument("--lora_path", type=str, required=True, help="Path to the LoRA weights")
-    parser.add_argument('--model_type', type=str, required=True, choices=['whisper-large', 'whisper-lora', 'whisper-turbo'], help='Type of the model to use')
     parser.add_argument("--audio_path", type=str, required=True, help="Path to the input audio file")
     parser.add_argument("--device", type=str, default="cuda", help="Device to run the model on (e.g., 'cuda' or 'cpu')")
     args = parser.parse_args()
+
+    dtype = torch.float16 if args.device == "cuda" else torch.float32
+    print("Loading model and LoRA weights...")
+    wrapper = WhisperLoraWrapper(args.model_path, args.lora_path, args.device, dtype=dtype)
+    print("Model Loaded.\nRunning inference...")
+    transcription = wrapper(args.audio_path)
+    print("Transcription:", transcription)
 
     
