@@ -1,6 +1,4 @@
 import argparse
-import librosa
-import torch
 from faster_whisper import WhisperModel
 
 
@@ -9,9 +7,8 @@ class WhisperTurboWrapper:
         self.model = WhisperModel(model_path, device=device, compute_type="float16")
 
     
-    def __call__(self, audio_path, language='ar'):
-        audio, sr = librosa.load(audio_path, sr=16000)
-        segments, _ = self.model.transcribe(audio, language=language, beam_size=5)
+    def __call__(self, audio_array, sr, language='ar'):
+        segments, _ = self.model.transcribe(audio_array, language=language, beam_size=5)
         return " ".join(seg.text.strip() for seg in segments)
 
 

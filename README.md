@@ -68,3 +68,12 @@ We welcome models that:
 run my model: python run_eval.py --lora_model d:/storage/my_model --output_manifest my_lora_v2_100samples --run_inference
 
 run davids model: python run_eval.py --model d:/storage/davids --output_manifest ###whatever u want --run_inference --faster_whisper
+
+
+run latency tests: 
+
+python test_latency.py --model /mnt/d/storage/models/qwen-asr-1.7b --model_type qwen-asr --results_path qwen-asr --warmup 5 --samples 10
+
+python test_latency.py --model /mnt/d/storage/models/davids --model_type whisper-turbo --results_path whisper-turbo --warmup 5 --samples 10
+
+python test_latency.py --model /mnt/d/storage/models/whisper-large-v3 --lora_path /mnt/d/storage/models/whisper_lora_ar_pseudo --model_type whisper-lora --results_path whisper-lora --warmup 5 --samples 10

@@ -1,7 +1,5 @@
-import argparse
 from peft import PeftModel
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
-import librosa
 import torch
 
 class WhisperLoraWrapper:
@@ -14,9 +12,8 @@ class WhisperLoraWrapper:
         self.model.eval()
 
 
-    def __call__(self, audio_path, language='ar'):
-        audio_array, sr = librosa.load(audio_path, sr=16000)
-        inputs = self.processor(audio_array, sampling_rate=16000, return_tensors="pt").input_features.to(self.model.device, dtype=self.model.dtype)
+    def __call__(self, audio_array, sr, language='ar'):
+        inputs = self.processor(audio_array, sampling_rate=sr, return_tensors="pt").input_features.to(self.model.device, dtype=self.model.dtype)
 
         forced_decoder_ids = self.processor.get_decoder_prompt_ids(language=language, task="transcribe")
 
@@ -26,20 +23,3 @@ class WhisperLoraWrapper:
         return self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
 
 
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="Whisper Lora Wrapper")
-    parser.add_argument("--model_path", type=str, required=True, help="Path to the base Whisper model")
-    parser.add_argument("--lora_path", type=str, required=True, help="Path to the LoRA weights")
-    parser.add_argument("--audio_path", type=str, required=True, help="Path to the input audio file")
-    parser.add_argument("--device", type=str, default="cuda", help="Device to run the model on (e.g., 'cuda' or 'cpu')")
-    args = parser.parse_args()
-
-    dtype = torch.float16 if args.device == "cuda" else torch.float32
-    print("Loading model and LoRA weights...")
-    wrapper = WhisperLoraWrapper(args.model_path, args.lora_path, args.device, dtype=dtype)
-    print("Model Loaded.\nRunning inference...")
-    transcription = wrapper(args.audio_path)
-    print("Transcription:", transcription)
-
-    
