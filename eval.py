@@ -1,9 +1,9 @@
 from tqdm import tqdm
 import json
-from nemo.collections.asr.metrics.wer import word_error_rate
+# from nemo.collections.asr.metrics.wer import word_error_rate
 from tqdm import tqdm
 import re
-from jiwer import wer, cer
+import jiwer
 import unicodedata
 
 def remove_punctuation(text):
@@ -77,12 +77,12 @@ def calculate_wer(output_manifest):
             predictions.append(normalize_arabic_text(item['pred_text']))
 
     len_ds = [len(predictions)] * len(predictions)
-    wer = word_error_rate(predictions, target_transcripts)
-    # wer = jiwer.wer(predictions, target_transcripts)
+    # wer = word_error_rate(predictions, target_transcripts)
+    wer = jiwer.wer(predictions, target_transcripts)
 
     print("wer : ", wer)
-    cer = word_error_rate(predictions, target_transcripts, use_cer=True)
-    # cer = jiwer.cer(predictions, target_transcripts,)
+    # cer = word_error_rate(predictions, target_transcripts, use_cer=True)
+    cer = jiwer.cer(predictions, target_transcripts,)
 
     print("cer : ", cer)
     return wer, cer, len_ds[0]
