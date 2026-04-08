@@ -103,16 +103,16 @@ model = load_model() if args.run_inference else None
 
 data_folders = [
     'common',
-    # 'horrid-qvc/Sada22Test',
-    # 'horrid-qvc/MGB2Test',
-    # 'horrid-qvc/CasablancaUAETest',
-    # 'horrid-qvc/CasablancaMoroccoTest',
-    # 'horrid-qvc/CasablancaJordanTest',
-    # 'horrid-qvc/CasablancaAlgeriaTest',
-    # 'horrid-qvc/CasablancaYemenTest',
-    # 'horrid-qvc/CasablancaPalestineTest',
-    # 'horrid-qvc/CasablancaMauritaniaTest',
-    # 'horrid-qvc/CasablancaEgyptTest',
+    'sada',
+    'mgb2',
+    'uae',
+    'morocco',
+    'jordan',
+    'algeria',
+    'yemen',
+    'palestine',
+    'mauritania',
+    'egypt',
     # 'storage/ArabicVoicesClean_v4',
     # 'horrid-qvc/CasablancaAllTest',
 ]
@@ -166,8 +166,8 @@ for data_folder in data_folders:
 
     with open(results_file, 'a', encoding='utf-8') as f:
         f.write(
-            f'model_type: {args.model_type}\n',
-            f'lora_model: {args.lora_model}\n' if args.lora_model is not None else 'None\n',
+            f'model_type: {args.model_type}\n'
+            f'lora_model: {args.lora_model if args.lora_model is not None else "None"}\n'
             f'model: {args.model}\n'
             f'dataset: {dataset_name}\n'
             f'wer: {wer}\n'
