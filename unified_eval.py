@@ -17,43 +17,14 @@ torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 np.random.seed(42)
 
 
-def load_audio_from_bytes(blob: bytes):
-    # 1) Let ffmpeg sniff the container/codec (most robust)
-    try:
-        seg = AudioSegment.from_file(io.BytesIO(blob))
-    except Exception as e1:
-        # 2) If sniffing fails, try common formats explicitly
-        for fmt in ("wav", "mp3", "flac", "ogg", "m4a", "webm"):
-            try:
-                seg = AudioSegment.from_file(io.BytesIO(blob), format=fmt)
-                break
-            except Exception:
-                seg = None
-        if seg is None:
-            raise RuntimeError(f"Could not decode audio bytes. First error: {e1}")
-
-    sr = int(seg.frame_rate)
-
-    x = np.array(seg.get_array_of_samples())
-
-    # handle stereo
-    if seg.channels == 2:
-        x = x.reshape((-1, 2)).mean(axis=1)
-
-    # normalize based on sample width (more correct than /32768 always)
-    # sample_width is bytes per sample: 2 -> int16, 4 -> int32, etc.
-    max_val = float(1 << (8 * seg.sample_width - 1))
-    x = x.astype(np.float32) / max_val
-
-    return x, sr
-
-
-def run_whisper(model_id, data_folder, output_manifest, model=None, full=False, random=False, proportional=False):
+def full_eval(data_folder, output_manifest, model, full=False, random=False, proportional=False):
     """
     Arguments
     ---------
     model_id: str
         HuggingFace whisper model name
+    processor: AutoProcessor
+        The processor corresponding to the model
     data_manifest: str
         Path of a data manifest under datasets/
     data_folder: str
@@ -65,43 +36,18 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, full=False, 
     ---------
     Create an output manifest containing ground truths and predictions
     """
-    if model is None:
-        model = AutoModelForSpeechSeq2Seq.from_pretrained(
-            model_id, dtype=torch_dtype, low_cpu_mem_usage=True, use_safetensors=True
-        )
-        model.to(device)
+    
 
-    else:
-        model.to(device)
-
-    model.eval()
-
-    processor = AutoProcessor.from_pretrained(model_id)
-    pipe = pipeline(
-        "automatic-speech-recognition",
-        model=model,
-        tokenizer=processor.tokenizer,
-        feature_extractor=processor.feature_extractor,
-        max_new_tokens=128,
-        chunk_length_s=30,
-        batch_size=16,
-        return_timestamps=False,
-        dtype=torch_dtype,
-        device=device,
-    )
-
-    if 'CasablancaAllTest' in data_folder:
-        ds = load_from_disk(f'C:/Users/husain_althagafi/work/leaderboard_asr/data/{data_folder}')
-
-    elif 'ArabicVoicesClean_v4' in data_folder:
-        ds = load_from_disk(f'D:/{data_folder}')['train']
+    if 'ArabicVoicesClean_v4' in data_folder:
+        ds = load_from_disk(f'/mnt/d/storage/{data_folder}')['train']
     
     else:
-        ds = load_dataset(data_folder)['test']
+        ds = load_from_disk(f'/home/husain_althagafi/work/asr_leaderboard/data/{data_folder}')
 
-    ds = ds.cast_column("audio", Audio(decode=False))
+    ds = ds.cast_column("audio", Audio(decode=True))
 
     print(f'full sampling: {full}')
+    print(f'sampling rate: {ds[0]["audio"]["sampling_rate"]}')
 
     if not full:
         sample_size = int(0.1 * len(ds)) if proportional else 100
@@ -110,8 +56,6 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, full=False, 
         original_indices = selected_indices
     else:
         original_indices = list(range(len(ds)))        
-
-    
 
     len_ds = len(ds)
     print(f'Loaded {len_ds} samples from the dataset.') 
@@ -122,15 +66,12 @@ def run_whisper(model_id, data_folder, output_manifest, model=None, full=False, 
             for idx, item in enumerate(tqdm(ds)):
                 original_idx = int(original_indices[idx])
                 path = item["audio"]["path"] 
-                audio, sr = load_audio_from_bytes(item["audio"]["bytes"])
+                audio, sr = item['audio']['array'], item['audio']['sampling_rate']
 
                 torch.cuda.reset_max_memory_allocated(torch.device("cuda"))
                 initial_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
 
-                transcription = pipe(
-                    {"array": audio, "sampling_rate": int(sr)},
-                    generate_kwargs={"language":"<|ar|>", "task":"transcribe", 'max_length': None, }
-                )["text"]
+                transcription = model(audio, sr)
                                 
                 peak_memory = torch.cuda.max_memory_allocated(torch.device("cuda"))/(1024 ** 3)
                 all_inference_memory.append(peak_memory-initial_memory)        

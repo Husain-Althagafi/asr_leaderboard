@@ -1,6 +1,6 @@
 import argparse
 from faster_whisper import WhisperModel
-
+import librosa
 
 class WhisperTurboWrapper:
     def __init__(self, model_path, device='cuda'):
@@ -8,6 +8,9 @@ class WhisperTurboWrapper:
 
     
     def __call__(self, audio_array, sr, language='ar'):
+        if sr != 16000:
+            audio_array = librosa.resample(audio_array, orig_sr=sr, target_sr=16000)
+    
         segments, _ = self.model.transcribe(audio_array, language=language, beam_size=5)
         return " ".join(seg.text.strip() for seg in segments)
 

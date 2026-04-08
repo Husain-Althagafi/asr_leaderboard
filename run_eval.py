@@ -1,21 +1,14 @@
 from transformers import AutoModelForSpeechSeq2Seq
 import torch
-from models.whisper import run_whisper
-from models.qwenasr import run_qwen_asr, QwenASRWrapper
-from models.faster_whisper import run_faster_whisper
+from wrappers.QwenASRWrapper import QwenASRWrapper
+from wrappers.WhisperLoraWrapper import WhisperLoraWrapper
+from wrappers.WhisperTurboWrapper import WhisperTurboWrapper
 from eval import calculate_wer
 import os
 import time
-from pydub import AudioSegment
 import argparse
 from peft import PeftModel
-from faster_whisper import WhisperModel
-
-
-FFMPEG = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffmpeg.exe"
-FFPROBE = r"C:\Users\husain_althagafi\Downloads\ffmpeg\ffmpeg\bin\ffprobe.exe"
-AudioSegment.converter = FFMPEG
-AudioSegment.ffprobe = FFPROBE
+from unified_eval import full_eval
 
 timing = int(time.time())
 
@@ -24,7 +17,7 @@ parser = argparse.ArgumentParser(description='Evaluate ASR models on multiple da
 parser.add_argument(
     '--model',
     type=str,
-    default='D:/storage/models/whisper-large-v3',
+    default='/mnt/d/storage/models/whisper-large-v3',
     help='Path or name for the ASR model to evaluate',
 )
 
@@ -75,53 +68,41 @@ args = parser.parse_args()
 torch_dtype = torch.float16 if torch.cuda.is_available() else torch.float32
 model_id = args.model
 
+if args.output_manifest == None:
+    print(f'WARNING NO OUTPUT MANIFEST HAS BEEN SPECIFIED. NO RESULTS WILL BE SAVED. To save results, specify --output_manifest with a name for the output file (e.g. --output_manifest mymodel_results)')
+
 
 def load_model():
     if args.model_type == 'qwen-asr':
         if args.lora_model is not None:
             raise ValueError('--lora_model is only supported for whisper, not qwen-asr.')
         print("loading qwen asr model...")
-        return QwenASRWrapper(model_id, device="cuda" if torch.cuda.is_available() else "cpu")
+        model = QwenASRWrapper(model_id, device="cuda" if torch.cuda.is_available() else "cpu")
+        return model
 
     if args.model_type == 'faster-whisper':
         if args.lora_model is not None:
             raise ValueError('--lora_model is not supported with faster-whisper in this script.')
         print("loading faster-whisper model...")
-        return WhisperModel(
-            model_id,
-            device="cuda" if torch.cuda.is_available() else "cpu",
-            compute_type="float16" if torch.cuda.is_available() else "float32",
-        )
-
+        model = WhisperTurboWrapper(model_id, device="cuda" if torch.cuda.is_available() else "cpu")
+        return model 
+    
     # standard whisper
-    if args.lora_model is not None:
+    else:
         print("loading base whisper model for lora...")
-        base_model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        model =  WhisperLoraWrapper(
             model_id,
-            torch_dtype=torch.float16 if torch.cuda.is_available() else torch.float32,
-            low_cpu_mem_usage=True,
-            use_safetensors=True
-        )
-        print("loading lora model...")
-        model = PeftModel.from_pretrained(
-            base_model,
             args.lora_model,
+            device="cuda" if torch.cuda.is_available() else "cpu",
         )
+        model.model.eval()
         return model
-
-    print("loading whisper model...")
-    return AutoModelForSpeechSeq2Seq.from_pretrained(
-        model_id,
-        torch_dtype=torch_dtype,
-        low_cpu_mem_usage=True,
-        use_safetensors=True
-    )
-
+    
 
 model = load_model() if args.run_inference else None
 
 data_folders = [
-    'horrid-qvc/CommonVoice18Test',
+    'common',
     # 'horrid-qvc/Sada22Test',
     # 'horrid-qvc/MGB2Test',
     # 'horrid-qvc/CasablancaUAETest',
@@ -148,6 +129,9 @@ weighted_cer_total = 0.0
 total_len_ds = 0
 error_rates = []
 
+if args.run_inference:
+    print(f'\n\nRunning inference and evaluation for model: {args.model} of type {args.model_type}\n\n')
+
 for data_folder in data_folders:
     dataset_name = data_folder.split("/")[-1]
 
@@ -161,39 +145,15 @@ for data_folder in data_folders:
     output_manifest = f'{out_dir}/{dataset_name}.txt'
 
     if args.run_inference:
-        if args.model_type == 'whisper':
-            run_whisper(
-                model_id=model_id,
-                data_folder=data_folder,
-                output_manifest=output_manifest,
-                model=model,
-                full=args.full_eval,
-                random=args.random_sample,
-                proportional=args.sample_proportion,
-            )
-
-        elif args.model_type == 'faster-whisper':
-            run_faster_whisper(
-                model_id=model_id,
-                data_folder=data_folder,
-                output_manifest=output_manifest,
-                model=model,
-                full=args.full_eval,
-                random=args.random_sample,
-                proportional=args.sample_proportion,
-            )
-
-        elif args.model_type == 'qwen-asr':
-            run_qwen_asr(
-                model_id=model_id,
-                data_folder=data_folder,
-                output_manifest=output_manifest,
-                model=model,
-                full=args.full_eval,
-                random=args.random_sample,
-                proportional=args.sample_proportion,
-                language='Arabic',
-            )
+        full_eval(
+            data_folder=data_folder,
+            output_manifest=output_manifest,
+            model=model,
+            full=args.full_eval,
+            random=args.random_sample,
+            proportional=args.sample_proportion,
+        )
+        
 
     results = calculate_wer(output_manifest)
     wer, cer, len_ds = results[0], results[1], results[2]
@@ -206,7 +166,8 @@ for data_folder in data_folders:
 
     with open(results_file, 'a', encoding='utf-8') as f:
         f.write(
-            f'model_type: {args.model_type}\n'
+            f'model_type: {args.model_type}\n',
+            f'lora_model: {args.lora_model}\n' if args.lora_model is not None else 'None\n',
             f'model: {args.model}\n'
             f'dataset: {dataset_name}\n'
             f'wer: {wer}\n'
