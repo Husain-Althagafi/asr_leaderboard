@@ -109,7 +109,7 @@ def run_faster_whisper(
 
         selected_indices = (
             np.random.choice(len(ds), size=sample_size, replace=False)
-            if random_sample else list(range(sample_size))
+            if random else list(range(sample_size))
         )
         ds = ds.select(selected_indices)
         original_indices = list(selected_indices)
@@ -138,7 +138,6 @@ def run_faster_whisper(
             segments, info = model.transcribe(
                 audio,
                 language="ar",
-                beam_size=5,
             )
 
             transcription = " ".join(seg.text.strip() for seg in segments).strip()
